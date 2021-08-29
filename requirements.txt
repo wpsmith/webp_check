@@ -1,0 +1,5 @@
+requests
+pillow
+python-dotenv
+sqlalchemy
+pymysql
