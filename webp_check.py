@@ -8,10 +8,20 @@ import config
 import cloudflare
 from loggr import logger
 
+purge_cache = False
 
 def webp_check(file_dir):
+    files_done = _webp_check(file_dir)
+
+    # Maybe clear the cache.
+    cfg = config.get()
+    if len(files_done) > 0 and cfg.get('CF_PURGE_CACHE'):
+        print("clearing cache")
+        cloudflare.purge(cfg.get('CF_ZONE_ID'))
+
+def _webp_check(file_dir):
+    files_done = []
     if os.path.exists(file_dir) and os.path.isdir(file_dir):
-        purge_cache = False
         if not file_dir[-1] == "/":
             file_dir = file_dir + "/"
         files = os.listdir(file_dir)
@@ -28,23 +38,23 @@ def webp_check(file_dir):
                     ext = f_path.split('.')[-1:][0]
                     w_path = f_path.replace(ext, 'webp')
                     if not os.path.exists(w_path):
+                        files_done.append(f_path)
+
                         # TODO Wrap with try
                         webp.convert(f_path, w_path)
                         logger.info(f"'{f_path}' Converted to '{w_path}'")
                         print(f"'{f_path}' Converted to '{w_path}'")
-                        purge_cache = True
 
             elif os.path.isdir(f_path):
                 # If not a file but directory, be recursive.
-                webp_check(f_path)
-
-        # Maybe clear the cache.
-        cfg = config.get()
-        if purge_cache and cfg.get('CF_PURGE_CACHE'):
-            cloudflare.purge(cfg.get('CF_ZONE_ID'))
+                recursive_files_done = _webp_check(f_path)
+                if len(recursive_files_done) > 0:
+                    files_done += recursive_files_done
     else:
         logger.error(f"'{file_dir}' either doesn't exist, or is not a dir...")
         print(f"'{file_dir}' either doesn't exist, or is not a dir...")
+
+    return files_done
 
 
 def convert_image_links(post_content):
