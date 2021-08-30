@@ -2,3 +2,4 @@ _deprecated
 .env
 *.log
 .idea
+venv
