@@ -165,7 +165,7 @@ class WPCLIConfig(WPCLIItem):
             path = self.yml_path
 
         try:
-            # Load the wp-cli.yml file into a string.
+            # Load the wp-cli.sample.yml file into a string.
             with open(path, "r") as f:
                 self.yml_str = f.read()
                 f.close()
