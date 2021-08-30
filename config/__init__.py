@@ -1,2 +1,2 @@
-from config.config import get, get_cf
+from config.config import get
 
