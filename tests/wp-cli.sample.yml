@@ -82,7 +82,7 @@ config create:
  -@staging
  - @production
 
-# '_' is a special value denoting configuration options for this wp-cli.yml
+# '_' is a special value denoting configuration options for this wp-cli.sample.yml
 _:
     # Merge subcommand defaults from the upstream config.yml, instead of overriding
     merge: true
