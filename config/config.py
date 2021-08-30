@@ -1,11 +1,10 @@
 import os
 from dotenv import dotenv_values
-import CloudFlare
 
 
 def _load():
     """
-    Loads the config.
+    Loads the config.py.
     :rtype: Dict[str, Optional[str]]
     """
     cfg = {
@@ -22,14 +21,4 @@ CFG = _load()
 
 def get():
     return CFG
-
-
-def _init_cf():
-    return CloudFlare.CloudFlare(token=CFG.get('CF_API_KEY'))
-
-
-CF = _init_cf()
-
-def get_cf():
-    return CF
 
