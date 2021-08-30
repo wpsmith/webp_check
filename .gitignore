@@ -1,3 +1,4 @@
 _deprecated
 .env
 *.log
+.idea
