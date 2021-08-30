@@ -1,4 +1,4 @@
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError, STDOUT
 from loggr import logger
 
 
@@ -57,7 +57,7 @@ class WPCommand(object):
 
     # Show all PHP errors; add verbosity to WP-CLI bootstrap.
     # Not implemented
-    debug = False
+    debug = bool
 
     # Suppress informational messages.
     # Not implemented.
@@ -185,8 +185,18 @@ class WPCommand(object):
         c = self.cmd()
         logger.info(f"running " + " ".join(c))
         print(f"running: " + " ".join(c))
-        output = check_output(c)
+        output = check_output(c, stderr=STDOUT)
         logger.info(output)
+
+        # try:
+        #     output = check_output(c, stderr=STDOUT)
+        #     # if "This does not seem to be a WordPress installation"
+        #     logger.info(output)
+        # except CalledProcessError as e:
+        #     o = e.output.decode("utf-8")
+        #     print(o)
+        #     return o
+
 
     # Returns the parameters.
     def params(self):
