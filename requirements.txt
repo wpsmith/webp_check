@@ -1,5 +1,4 @@
 requests
 pillow
 python-dotenv
-sqlalchemy
-pymysql
+PyYAML~=5.4.1
