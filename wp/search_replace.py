@@ -126,7 +126,7 @@ class SearchReplace(WPCommand):
         return [
             f"\"{self.old}\"",
             f"\"{self.new}\"",
-            self.table
+            f"\"{self.table}\""
         ]
 
             # "wp_post*",
