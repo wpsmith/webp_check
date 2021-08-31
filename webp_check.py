@@ -34,7 +34,7 @@ def import_db(date):
     db_import = wp.DBImport(
         get_backup_filename(date),
         skip_optimizations=True,
-        as_sudo=(not os.geteuid() == 0),
+        as_sudo=(os.geteuid() == 0),
     )
     return db_import.run()
 
@@ -44,7 +44,7 @@ def export_db():
     export = wp.DBExport(
         get_backup_filename(),
         add_drop_table=True,
-        as_sudo=(not os.geteuid() == 0),
+        as_sudo=(os.geteuid() == 0),
     )
     return export.run()
 
@@ -84,7 +84,7 @@ def get_db_prefix():
 def purge_cache():
     was_flushed = True
     out, err = wp.CacheFlush(
-        as_sudo=(not os.geteuid() == 0),
+        as_sudo=(os.geteuid() == 0),
     ).run()
     if "Success: The cache was flushed." != out.strip():
         was_flushed = False
@@ -140,7 +140,7 @@ def process_db_images():
     # Find all the images.
     s = wp.DBSearch(
         get_domain_pattern(),
-        as_sudo=(not os.geteuid() == 0),
+        as_sudo=(os.geteuid() == 0),
         regex=True,
         all_tables=True,
         table_column_once=True,
@@ -160,7 +160,7 @@ def process_db_images():
                 o_file.replace(get_path(), ""),
                 get_webp_image_file(o_file).replace(get_path(), ""),
                 table=table["table"],
-                as_sudo=(not os.geteuid() == 0),
+                as_sudo=(os.geteuid() == 0),
                 skip_themes=True,
                 skip_plugins=True,
                 color=False)
