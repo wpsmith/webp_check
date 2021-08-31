@@ -13,9 +13,12 @@ def purge(cf_zone_id):
         response = requests.post(URL, headers=cf_headers, data=cf_data)
     except Exception as err:
         print("There was an issue calling cloudflare.")
+        return False
     else:
         if response.status_code == 200 and response.json()['success']:
             print("cache has been purged.")
+            return True
         else:
             print("cache has NOT been purged.")
             print(f"{response.json()}")
+            return False
