@@ -350,7 +350,7 @@ class WPCommand(object):
             else:
                 p.append(f"--{key}=\"{val}\"")
 
-        if self.as_sudo and 'root' == self.cmd_user:
+        if self.as_sudo and ('root' == self.cmd_user or not os.geteuid() == 0):
             p += self.__as_sudo_param
 
         return p
