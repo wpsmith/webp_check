@@ -1,0 +1,7 @@
+url: :SITE_DOMAIN
+path: :APP_PATH
+color: false
+debug: false
+user: :WP_USER
+disabled_commands:
+  - db drop
