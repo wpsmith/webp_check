@@ -15,7 +15,11 @@ def replace_path(domain, original_path, new_path):
     wp.search_replace(domain, original_string, new_string)
 
 
-def convert(f_image, webp_image):
+def convert(f_image, webp_image=''):
+    if '' == webp_image:
+        ext = f_image.split('.')[-1:][0]
+        webp_image = f_image.replace(ext, 'webp')
+
     if f_image.endswith(".gif"):
         convert_gif2webp(f_image, webp_image, int(config.get().get('GIF_QUALITY')))
     else:
