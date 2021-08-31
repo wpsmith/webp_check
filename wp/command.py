@@ -1,3 +1,5 @@
+import os
+
 from loggr import logger
 import subprocess
 
@@ -350,7 +352,7 @@ class WPCommand(object):
             else:
                 p.append(f"--{key}=\"{val}\"")
 
-        if self.as_sudo and ('root' == self.cmd_user or not os.geteuid() == 0):
+        if self.as_sudo and ('root' == self.cmd_user or os.geteuid() == 0):
             p += self.__as_sudo_param
 
         return p
