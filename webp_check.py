@@ -1,80 +1,293 @@
 #!/usr/bin/env python3
 
-import os
 import sys
+import os
 import re
-import webp
-import config
+
 import cloudflare
+import config
+import webp
+import wp
 from loggr import logger
 
-purge_cache = False
+db_prefix, db_prefix_err = wp.DBPrefix().run()
+app_path = config.get().get("APP_PATH").rstrip("/")
 
-def webp_check(file_dir):
-    files_done = _webp_check(file_dir)
 
-    # Maybe clear the cache.
-    cfg = config.get()
-    if len(files_done) > 0 and cfg.get('CF_PURGE_CACHE'):
-        print("clearing cache")
-        cloudflare.purge(cfg.get('CF_ZONE_ID'))
+# Import DB
+def import_db():
+    db_import = wp.DBImport(
+        os.path.join(os.path.dirname(__file__), 'dump.sql'),
+        skip_optimizations=True,
+    )
+    return db_import.run()
 
-def _webp_check(file_dir):
-    files_done = []
+
+# Backup DB
+def export_db():
+    export = wp.DBExport(
+        os.path.join(os.path.dirname(__file__), 'dump.sql'),
+        add_drop_table=True,
+    )
+    return export.run()
+
+
+# Gets the hostname/site domain from config.
+def get_domain():
+    return config.get().get("SITE_DOMAIN")
+
+
+# Gets the app path from config.
+def get_path():
+    return app_path
+
+
+# Gets the URL pattern for a domain (without http/s) to an image.
+def get_domain_pattern():
+    return f'({get_domain()})([-a-zA-Z0-9()@:%_\+.~#?&\/=]+?([\w\d_-]+)\.)(jpg|jpeg|png|gif)'
+
+
+# Gets the path pattern for a domain to an image.
+def get_path_pattern():
+    return f'({get_path()})([-a-zA-Z0-9()@:%_\+.~#?&\/=]+?([\w\d_-]+)\.)(jpg|jpeg|png|gif)'
+
+
+# Gets the file path from URL.
+def get_file(url):
+    path = re.sub(rf'https?:\/\/{get_domain()}\/', "", url)
+    return os.path.join(get_path(), path)
+
+
+# Get DB Prefix.
+def get_db_prefix():
+    return db_prefix
+
+
+# Purges the WP and Cloudflare cache.
+def purge_cache():
+    was_flushed = True
+    out, err = wp.CacheFlush().run()
+    if "Success: The cache was flushed." != out.strip():
+        was_flushed = False
+
+    if config.get().get("CF_PURGE_CACHE"):
+        is_flushed = cloudflare.purge(config.get().get("CF_ZONE_ID"))
+        if not is_flushed:
+            was_flushed = False
+
+    return was_flushed
+
+
+# Prepares the DB for this script to run and test.
+def prepare():
+    # export_db()
+    import_db()
+    wp.OptionUpdate(
+        "testing_option",
+        f'https://{get_domain()}/wp-content/uploads/some-real-image.jpg').run()
+
+    wp.OptionUpdate(
+        "testing_option_multi",
+        f'https://{get_domain()}/unhappy-fake-image.jpg, https://{get_domain()}/happy-fake-image.jpg').run()
+
+    wp.SearchReplace(
+        "https://paideiasedev.wpengine.com",
+        "https://paideiasoutheast.test",
+        skip_themes=True,
+        skip_plugins=True,
+        all_tables=True,
+    ).run()
+
+    wp.SearchReplace(
+        "https://demos.restored316.com",
+        "https://paideiasoutheast.test",
+        skip_themes=True,
+        skip_plugins=True,
+        all_tables_with_prefix=True,
+    ).run()
+
+    wp.SearchReplace(
+        "https://paideiasoutheast.test/refined/wp-content/uploads/sites/4",
+        "https://paideiasoutheast.test",
+        skip_themes=True,
+        skip_plugins=True,
+        all_tables=True,
+    ).run()
+
+    wp.SearchReplace(
+        "https://paideiasoutheast.test/sage/wp-content/uploads/sites/7",
+        "https://paideiasoutheast.test",
+        skip_themes=True,
+        skip_plugins=True,
+        all_tables=True,
+    ).run()
+
+    print("--PREPARED--")
+
+
+# Get image paths from search output for a specific table.
+def get_image_paths_from_table_out(out):
+    image_paths = []
+    domain_matches = re.findall(get_domain_pattern(), out)
+    for match in domain_matches:
+        image_paths.append(os.path.join(get_path(), match[1].lstrip("/")) + match[3])
+
+    path_matches = re.findall(get_path_pattern(), out)
+    for match in path_matches:
+        image_paths.append(os.path.join(get_path(), match[1].lstrip("/")) + match[3])
+
+    return list(set(image_paths))
+
+
+# Get image paths by table.
+def get_image_paths_by_table(out):
+    tables = {}
+    matches = re.findall(r'(\w+):(\w+):(\d+):(.*)', out)
+    for match in matches:
+        if match[0] not in tables:
+            tables[match[0]] = {"table": match[0], "out": '', "images": []}
+        tables[match[0]]["out"] += "\n".join(match)
+
+    for key, table in tables.items():
+        tables[key]["images"] = get_image_paths_from_table_out(table["out"])
+
+    return tables
+
+
+# Process images, starting with the database.
+def process_db_images():
+    purge_cache = False
+
+    # Find all the images.
+    s = wp.DBSearch(
+        # 'paideiasoutheast\.test\/.+(jpg|jpeg|png|gif)',
+        #  '[-a-zA-Z0-9()@:%_\+.~#?&\/=]+?([\w\d_-]+)\.(jpg|jpeg|png|gif)',
+        get_domain_pattern(),
+        regex=True,
+        # regex_flags="i",
+        all_tables=True,
+        table_column_once=True,
+        one_line=True,
+        # matches_only=True,
+        # color=False,
+        # quiet=True,
+        # debug=True,
+        # path="/Users/travis.smith/Projects/WPS/paideiasoutheast.test"
+    )
+    out, err = s.run()
+    print(out)
+    print(err)
+
+    # Process the images
+    table_images = get_image_paths_by_table(out)
+    # for table in table_images:
+    for key, table in table_images.items():
+        images_processed, images_not_processed, images_converted = process_images(table["images"])
+        for o_file in images_converted:
+            sr = wp.SearchReplace(
+                o_file.replace(get_path(), ""),
+                get_webp_image_file(o_file).replace(get_path(), ""),
+                table=table["table"],
+                skip_themes=True,
+                skip_plugins=True,
+                color=False)
+            out, e = sr.run()
+            print(out)
+            # print(err)
+
+    return purge_cache
+
+
+def get_image_exts():
+    return ["jpg", "jpeg", "png", "gif"]
+
+
+def process_dir(file_dir):
+    dir_images_processed, dir_images_not_processed, dir_images_converted = [], [], []
     if os.path.exists(file_dir) and os.path.isdir(file_dir):
-        if not file_dir[-1] == "/":
-            file_dir = file_dir + "/"
+        print(f"Processing DIR {file_dir}")
+        file_dir = file_dir.rstrip("/") + "/"
         files = os.listdir(file_dir)
+        files = [os.path.join(file_dir, f) for f in files]
+        dirs = [f for f in files if os.path.isdir(f)]
+        files = [f for f in files if os.path.isfile(f) and f.split('.')[-1:][0] in get_image_exts()]
 
-        # Cycle through files.
-        for f in files:
-            f_path = file_dir + f
+        if len(files) > 0:
+            images_processed, images_not_processed, images_converted = process_images(files)
+            dir_images_processed += images_processed
+            dir_images_not_processed += images_not_processed
+            dir_images_converted += images_converted
 
-            # Make sure we have a file.
-            if os.path.isfile(f_path):
-                ext = f_path.split('.')[-1]
-                if ext == "jpg" or ext == "jpeg" or ext == "png" or ext == "gif":
-                    # check if webp equivalent exists.
-                    ext = f_path.split('.')[-1:][0]
-                    w_path = f_path.replace(ext, 'webp')
-                    if not os.path.exists(w_path):
-                        files_done.append(f_path)
-
-                        # TODO Wrap with try
-                        webp.convert(f_path, w_path)
-                        logger.info(f"'{f_path}' Converted to '{w_path}'")
-                        print(f"'{f_path}' Converted to '{w_path}'")
-
-            elif os.path.isdir(f_path):
-                # If not a file but directory, be recursive.
-                recursive_files_done = _webp_check(f_path)
-                if len(recursive_files_done) > 0:
-                    files_done += recursive_files_done
+        for d in dirs:
+            images_processed, images_not_processed, images_converted = process_dir(d)
+            dir_images_processed += images_processed
+            dir_images_not_processed += images_not_processed
+            dir_images_converted += images_converted
     else:
-        logger.error(f"'{file_dir}' either doesn't exist, or is not a dir...")
-        print(f"'{file_dir}' either doesn't exist, or is not a dir...")
+        msg = f"'{file_dir}' either doesn't exist, or is not a dir..."
+        logger.error(msg)
+        print(msg)
 
-    return files_done
+    return dir_images_processed, dir_images_not_processed, dir_images_converted
 
 
-def convert_image_links(post_content):
-    domain = re.escape(config.get().get('SITE_DOMAIN'))
-    # find image links and save to array
-    links = re.findall(r'https?://' + domain + '[/|.|\w|\s|-]*\.(?:jpe?g|png)', post_content)
+def print_msgs(action, images):
+    print(f"---- {action.upper()} ----")
+    print(images)
+    print(f"---------------------------------")
 
-    # replace \.(jpg|jpeg|png) w/ .webp
-    for l in links:
-        ext = l.split('.')[-1:][0]
-        new_link = l.replace(ext, 'webp')
-        post_content = post_content.replace(l, new_link)
 
-    # return post content
-    return post_content
+def get_webp_image_file(o_file):
+    ext = o_file.split('.')[-1:][0]
+    return o_file.replace(f".{ext}", '.webp')
+
+
+def process_images(image_paths):
+    images_processed = []
+    images_converted = []
+    images_not_processed = []
+    for o_file in image_paths:
+        print(f"  -Processing FILE {o_file}")
+        if o_file.endswith(tuple(get_image_exts())):
+            w_file = get_webp_image_file(o_file)
+            if os.path.exists(o_file):
+                if not os.path.exists(w_file):
+                    webp.convert(o_file, w_file)
+                    logger.info(f"'{o_file}' Converted to '{w_file}'")
+                    images_converted.append(o_file)
+                else:
+                    logger.debug(f"'{w_file}' exists")
+                images_processed.append(o_file)
+            else:
+                logger.error(f"Original '{o_file}' does not exist")
+                images_not_processed.append(o_file)
+        else:
+            logger.error(f"'{o_file}' not an image")
+            images_not_processed.append(o_file)
+
+    return images_processed, images_not_processed, images_converted
+
+
+def run():
+    # all_images_processed, all_images_not_processed, all_images_converted = [], [], []
+    fs_images_processed, fs_images_not_processed, fs_images_converted = process_dir(get_path())
+    print_msgs("filesystem images processed", fs_images_processed)
+    print_msgs("filesystem images converted", fs_images_converted)
+    print_msgs("filesystem images not processed", fs_images_not_processed)
+
+    db_images_processed, db_images_not_processed, db_images_converted = process_db_images()
+    print_msgs("DB images - processed", db_images_processed)
+    print_msgs("DB images - converted", db_images_converted)
+    print_msgs("DB images - not processed", db_images_not_processed)
+
+    if len(fs_images_converted or db_images_converted) > 0:
+        purge_cache()
+
+
+prepare()
 
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
-        webp_check(sys.argv[1])
-    else:
-        print("missing argument...")
-        exit(1)
+        app_path = sys.argv[1]
+    run()
