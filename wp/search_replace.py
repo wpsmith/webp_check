@@ -1,8 +1,8 @@
 from wp.command import WPCommand
-import config
+
 
 class SearchReplace(WPCommand):
-    command = 'search-replace'
+    command = ['search-replace']
 
     # A string to search for within the database.
     old = ''  # Required
@@ -91,17 +91,17 @@ class SearchReplace(WPCommand):
     # Default 40. Ignored if not logging.
     after_context = int
 
-    def __init__(self, old, new, table='', **args):
-        self._args = args
+    def __init__(self, old, new, **args):
         super().__init__(**args)
         # super().__init__(self, self.command, **args)
         self.old = old
         self.new = new
-        self.table = table
 
+        self.table = self.get_arg_value(key="table", default_value=self.table)
         self.dry_run = self.get_arg_value(key="dry_run", default_value=self.dry_run)
         self.network = self.get_arg_value(key="network", default_value=self.network)
-        self.all_tables_with_prefix = self.get_arg_value(key="all_tables_with_prefix", default_value=self.all_tables_with_prefix)
+        self.all_tables_with_prefix = self.get_arg_value(key="all_tables_with_prefix",
+                                                         default_value=self.all_tables_with_prefix)
         self.all_tables = self.get_arg_value(key="all_tables", default_value=self.all_tables)
         self.export = self.get_arg_value(key="export", default_value=self.export)
         self.export_insert_size = self.get_arg_value(key="export_insert_size", default_value=self.export_insert_size)
@@ -123,28 +123,40 @@ class SearchReplace(WPCommand):
         self.after_context = self.get_arg_value(key="after_context", default_value=self.after_context)
 
     def params(self):
-        return [
-            f"\"{self.old}\"",
-            f"\"{self.new}\"",
-            f"\"{self.table}\""
+        p = [
+            self.old,
+            self.new
         ]
+        if "" != self.table:
+            p.append(self.table)
 
-            # "wp_post*",
-            # "--all-tables-with-prefix", f"--url={self.url}"
-            #                             "--dry-run",
-            # "--path=" + config.get().get('APP_PATH')
+        return p
+        # return [
+        #     self.old,
+        #     self.new,
+        #     self.table,
+        #     # f"\"{self.old}\"",
+        #     # f"\"{self.new}\"",
+        #     # f"'{self.table}'"
         # ]
 
     def get_raw_params(self):
-        return super().get_raw_params() + [
+        return [
             "before_context",
             "after_context"
         ]
 
     def get_excluded_attrs(self):
-        return super().get_excluded_attrs() + [
+        return [
             "old",
             "new",
             "table"
         ]
-#
+
+    def get_attr_custom_param_output(self, attr):
+        if 'regex_flags' == attr and '' != self.regex_flags:
+            return '--regex-flags=' + self.regex_flags
+        if 'include_columns' == attr and '' != self.include_columns:
+            return '--include-columns=' + self.include_columns
+
+        return ''
