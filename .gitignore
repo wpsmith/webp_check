@@ -3,3 +3,4 @@ _deprecated
 *.log
 .idea
 venv
+tests/wp-cli.yml
