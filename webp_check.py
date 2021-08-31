@@ -26,7 +26,7 @@ def get_backup_filename(date=""):
     domain = cfg.get("SITE_DOMAIN")
     if domain is None:
         domain = 'wordpress'
-    return os.path.join(path, f'backup-{domain}-{date}.sql'),
+    return os.path.join(path, f'backup-{domain}-{date}.sql')
 
 
 # Import DB
