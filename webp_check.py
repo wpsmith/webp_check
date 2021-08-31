@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+from datetime import datetime
 import sys
 import os
 import re
@@ -14,10 +14,25 @@ db_prefix, db_prefix_err = wp.DBPrefix().run()
 app_path = config.get().get("APP_PATH").rstrip("/")
 
 
+def get_backup_filename(date=""):
+    if "" == date:
+        date = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+    cfg = config.get()
+    path = cfg.get("BACKUPS_PATH")
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    domain = cfg.get("SITE_DOMAIN")
+    if domain is None:
+        domain = 'wordpress'
+    return os.path.join(path, f'backup-{domain}-{date}.sql'),
+
+
 # Import DB
-def import_db():
+def import_db(date):
     db_import = wp.DBImport(
-        os.path.join(os.path.dirname(__file__), 'dump.sql'),
+        get_backup_filename(date),
         skip_optimizations=True,
     )
     return db_import.run()
@@ -26,7 +41,7 @@ def import_db():
 # Backup DB
 def export_db():
     export = wp.DBExport(
-        os.path.join(os.path.dirname(__file__), 'dump.sql'),
+        get_backup_filename(),
         add_drop_table=True,
     )
     return export.run()
@@ -80,49 +95,9 @@ def purge_cache():
 
 # Prepares the DB for this script to run and test.
 def prepare():
-    # export_db()
-    import_db()
-    wp.OptionUpdate(
-        "testing_option",
-        f'https://{get_domain()}/wp-content/uploads/some-real-image.jpg').run()
-
-    wp.OptionUpdate(
-        "testing_option_multi",
-        f'https://{get_domain()}/unhappy-fake-image.jpg, https://{get_domain()}/happy-fake-image.jpg').run()
-
-    wp.SearchReplace(
-        "https://paideiasedev.wpengine.com",
-        "https://paideiasoutheast.test",
-        skip_themes=True,
-        skip_plugins=True,
-        all_tables=True,
-    ).run()
-
-    wp.SearchReplace(
-        "https://demos.restored316.com",
-        "https://paideiasoutheast.test",
-        skip_themes=True,
-        skip_plugins=True,
-        all_tables_with_prefix=True,
-    ).run()
-
-    wp.SearchReplace(
-        "https://paideiasoutheast.test/refined/wp-content/uploads/sites/4",
-        "https://paideiasoutheast.test",
-        skip_themes=True,
-        skip_plugins=True,
-        all_tables=True,
-    ).run()
-
-    wp.SearchReplace(
-        "https://paideiasoutheast.test/sage/wp-content/uploads/sites/7",
-        "https://paideiasoutheast.test",
-        skip_themes=True,
-        skip_plugins=True,
-        all_tables=True,
-    ).run()
-
-    print("--PREPARED--")
+    out, err = export_db()
+    logger.info(out)
+    logger.debug(err)
 
 
 # Get image paths from search output for a specific table.
@@ -232,9 +207,9 @@ def process_dir(file_dir):
 
 
 def print_msgs(action, images):
-    print(f"---- {action.upper()} ----")
-    print(images)
-    print(f"---------------------------------")
+    logger.info(f"---- {action.upper()} ----")
+    logger.info(images)
+    logger.info(f"---------------------------------")
 
 
 def get_webp_image_file(o_file):
@@ -247,7 +222,7 @@ def process_images(image_paths):
     images_converted = []
     images_not_processed = []
     for o_file in image_paths:
-        print(f"  -Processing FILE {o_file}")
+        logger.debug(f"  -Processing FILE {o_file}")
         if o_file.endswith(tuple(get_image_exts())):
             w_file = get_webp_image_file(o_file)
             if os.path.exists(o_file):
@@ -284,10 +259,8 @@ def run():
         purge_cache()
 
 
-prepare()
-
-
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         app_path = sys.argv[1]
-    run()
+    prepare()
+    # run()
