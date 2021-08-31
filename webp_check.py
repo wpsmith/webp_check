@@ -34,6 +34,7 @@ def import_db(date):
     db_import = wp.DBImport(
         get_backup_filename(date),
         skip_optimizations=True,
+        as_sudo=(not os.geteuid() == 0),
     )
     return db_import.run()
 
@@ -43,6 +44,7 @@ def export_db():
     export = wp.DBExport(
         get_backup_filename(),
         add_drop_table=True,
+        as_sudo=(not os.geteuid() == 0),
     )
     return export.run()
 
@@ -81,7 +83,9 @@ def get_db_prefix():
 # Purges the WP and Cloudflare cache.
 def purge_cache():
     was_flushed = True
-    out, err = wp.CacheFlush().run()
+    out, err = wp.CacheFlush(
+        as_sudo=(not os.geteuid() == 0),
+    ).run()
     if "Success: The cache was flushed." != out.strip():
         was_flushed = False
 
@@ -135,19 +139,12 @@ def process_db_images():
 
     # Find all the images.
     s = wp.DBSearch(
-        # 'paideiasoutheast\.test\/.+(jpg|jpeg|png|gif)',
-        #  '[-a-zA-Z0-9()@:%_\+.~#?&\/=]+?([\w\d_-]+)\.(jpg|jpeg|png|gif)',
         get_domain_pattern(),
+        as_sudo=(not os.geteuid() == 0),
         regex=True,
-        # regex_flags="i",
         all_tables=True,
         table_column_once=True,
         one_line=True,
-        # matches_only=True,
-        # color=False,
-        # quiet=True,
-        # debug=True,
-        # path="/Users/travis.smith/Projects/WPS/paideiasoutheast.test"
     )
     out, err = s.run()
     print(out)
@@ -163,6 +160,7 @@ def process_db_images():
                 o_file.replace(get_path(), ""),
                 get_webp_image_file(o_file).replace(get_path(), ""),
                 table=table["table"],
+                as_sudo=(not os.geteuid() == 0),
                 skip_themes=True,
                 skip_plugins=True,
                 color=False)
