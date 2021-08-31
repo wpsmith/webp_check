@@ -1,4 +1,4 @@
 requests
 pillow
 python-dotenv
-PyYAML~=5.4.1
+PyYAML
