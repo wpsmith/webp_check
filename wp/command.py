@@ -1,5 +1,5 @@
-from subprocess import check_output, CalledProcessError, STDOUT
 from loggr import logger
+import subprocess
 
 
 class WPCommand(object):
@@ -11,8 +11,8 @@ class WPCommand(object):
 
     # Whether to run as sudo.
     as_sudo = False
-    _as_sudo = ["sudo", "-u", cmd_user]
-    _as_sudo_param = ["--allow-root"]
+    __as_sudo = ["sudo", "-u", cmd_user]
+    __as_sudo_param = ["--allow-root"]
 
     # What should come before the WP Command.
     cmd_prefix = []
@@ -24,7 +24,7 @@ class WPCommand(object):
     cmd_suffix = []
 
     # The WP Command.
-    command = ''
+    command = []
 
     # GLOBAL PARAMETERS.
 
@@ -114,14 +114,23 @@ class WPCommand(object):
         "WP_CLI_SUPPRESS_GLOBAL_PARAMS": '',
     }
 
+    # STDOUT result of run().
+    output = ''
+
+    # STDERR result of run().
+    error = ''
+
     # def __setattr__(key, value):
     #     super().__setattr__(key, value)
 
     def __init__(self, **args):
-        if self._args is None:
+        super().__init__()
+        if self._args is not None:
             self._args = args
+
         self.cmd_prefix = self.get_arg_value(key="cmd_prefix", default_value=self.cmd_prefix)
         self.as_sudo = self.get_arg_value(key="as_sudo", default_value=self.as_sudo)
+        self.cmd_user = self.get_arg_value(key="cmd_user", default_value=self.cmd_user)
 
         # Global parameters.
         self.path = self.get_arg_value(key="path", default_value=self.path)
@@ -134,31 +143,16 @@ class WPCommand(object):
         self.skip_packages = self.get_arg_value(key="skip_packages", default_value=self.skip_packages)
         self.color = self.get_arg_value(key="color", default_value=self.color)
         self.debug = self.get_arg_value(key="debug", default_value=self.debug)
-        self.quiet = self.get_arg_value(key="quiet", default_value=self.quiet)
+        # self.quiet = self.get_arg_value(key="quiet", default_value=self.quiet)
         self.apache_modules = self.get_arg_value(key="apache_modules", default_value=self.apache_modules)
-
-    # self.cmd_prefix = self.get_arg_value(key="cmd_prefix", default_value=self.cmd_prefix, args=args)
-    # self.as_sudo = self.get_arg_value(key="as_sudo", default_value=self.as_sudo, args=args)
-    # # self.cmd_user = self.get_arg_value(key="cmd_user", default_value=self.cmd_user, args=args)
-    #
-    # # Global parameters.
-    # self.path = self.get_arg_value(key="path", default_value=self.path, args=args)
-    # self.ssh = self.get_arg_value(key="ssh", default_value=self.ssh, args=args)
-    # self.http = self.get_arg_value(key="http", default_value=self.http, args=args)
-    # self.url = self.get_arg_value(key="url", default_value=self.url, args=args)
-    # self.user = self.get_arg_value(key="user", default_value=self.user, args=args)
-    # self.skip_plugins = self.get_arg_value(key="skip_plugins", default_value=self.skip_plugins, args=args)
-    # self.skip_themes = self.get_arg_value(key="skip_themes", default_value=self.skip_themes, args=args)
-    # self.skip_packages = self.get_arg_value(key="skip_packages", default_value=self.skip_packages, args=args)
-    # self.color = self.get_arg_value(key="color", default_value=self.color, args=args)
-    # self.debug = self.get_arg_value(key="debug", default_value=self.debug, args=args)
-    # self.quiet = self.get_arg_value(key="quiet", default_value=self.quiet, args=args)
-    # self.apache_modules = self.get_arg_value(key="apache_modules", default_value=self.apache_modules, args=args)
 
     def __getitem__(self, item):
         return super().__getattribute__(item)
 
-    # def get_arg_value(self, key, default_value, **args):
+    def __str__(self):
+        return " ".join([str(elem) for elem in self.cmd()])
+
+    # PUBLIC API.
     def get_arg_value(self, key, default_value):
         value = self._args.get(key)
         if value is None:
@@ -168,25 +162,42 @@ class WPCommand(object):
 
     # Gets everything for the command.
     def cmd(self):
-        return self._prefix() + \
-               self._wp_cmd() + \
-               self._cmd() + \
-               self._params() + \
-               self._suffix()
-        # return self._prefix() + \
-        #        self._wp_cmd() + \
-        #        # self._global_params() + \
-        #        self._cmd() + \
-        #        self._params() + \
-        #        self._suffix()
+        return self.__cmd()
+
+    def __cmd(self):
+        return self.__prefix() + \
+               self.__wp_cmd() + \
+               self.command + \
+               self.__params() + \
+               self.__suffix()
+
+    # Runs the command as sudo or as root.
+    def run_as_sudo(self):
+        self.as_sudo = True
+        return self.run()
 
     # Runs the command.
     def run(self):
         c = self.cmd()
-        logger.info(f"running " + " ".join(c))
-        print(f"running: " + " ".join(c))
-        output = check_output(c, stderr=STDOUT)
-        logger.info(output)
+        logger.info(f"running " + " ".join([str(elem) for elem in c]))
+        # print(f"running: " + " ".join([str(elem) for elem in c]))
+
+        output, error = subprocess.Popen(
+            c, universal_newlines=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+
+        self.output = output.strip("\n")
+        self.error = error.strip("\n")
+
+        # print(output)
+        # print(error)
+        logger.info("Output: {0}".format(self.output))
+        logger.info("Errors: {0}".format(self.error))
+        return self.output, self.error
+
+        # output = subprocess.check_output(c)
+        # output = subprocess.check_output(c, stderr=subprocess.STDOUT)
+        # print(output.decode('utf-8'))
 
         # try:
         #     output = check_output(c, stderr=STDOUT)
@@ -197,161 +208,152 @@ class WPCommand(object):
         #     print(o)
         #     return o
 
-
-    # Returns the parameters.
+    # Abstract Method. Returns the parameters.
     def params(self):
-        return []
+        raise NotImplementedError("Please implement params")
+
+    # Abstract Method. Returns the parsed output or by default, just the output.
+    def get_result(self):
+        return self.output
 
     # Params that should not have underscores (_) replaced with dashes (-).
     # Should be overridden.
     def get_raw_params(self):
-        return [
+        return []
+
+    # Gets excluded attributes. These class/instance attributes will never be outputted.
+    # Should be overridden.
+    def get_excluded_attrs(self):
+        return []
+
+    # Gets the bool attributes. Key should be the raw attribute.
+    def get_custom_bool_attrs(self):
+        return {}
+
+    # Returns a custom string output for specific attribute.
+    def get_attr_custom_param_output(self, attr):
+        return ''
+
+    # PRIVATE API.
+
+    # Params that should not have underscores (_) replaced with dashes (-).
+    # Should be overridden.
+    def __get_raw_params(self):
+        return self.get_raw_params() + [
             "apache_modules",
         ]
 
+    # Gets the custom bool attrs. Key should be the raw attribute.
+    def __get_custom_bool_attrs(self):
+        global_attrs = {
+            "color-false": "--no-color",
+            "debug-false": "--debug=false",
+        }
+
+        attrs = self.get_custom_bool_attrs()
+        attrs.update(global_attrs)
+        return attrs
+
+    # Gets the custom string attrs.
+    def __get_attr_custom_param_output(self, attr):
+        if 'format' == attr and hasattr(self, 'format') and '' != self.format:
+            return '--format=' + self.format
+
+        return self.get_attr_custom_param_output(attr)
+
     # Gets excluded attributes.
-    # Should be overridden.
-    def get_excluded_attrs(self):
-        return [
+    def __get_excluded_attrs(self):
+        return self.get_excluded_attrs() + [
             "_args",
             "as_sudo",
-            "_as_sudo",
-            "_as_sudo_param",
             "cmd_user",
             "cmd_prefix",
             "cmd_base",
             "cmd_suffix",
             "command",
             "envs",
+            "error",
+            "output",
+            "prompt",
+            "quiet",
         ]
 
-    # PRIVATE
+    def __filter_atts(self, attr):
+        # res = (
+        #         not attr.startswith('__')
+        #         and not attr.startswith('_' + self.__class__.__name__ + '__')
+        #         and not attr.startswith('_WPCommand__')
+        #         and not callable(getattr(self, attr))
+        #         and attr not in self.__get_excluded_attrs()
+        # )
+        return (
+                not attr.startswith('__')
+                and not attr.startswith('_' + self.__class__.__name__ + '__')
+                and not attr.startswith('_WPCommand__')
+                and not callable(getattr(self, attr))
+                and attr not in self.__get_excluded_attrs()
+        )
+
+    # Gets all attributes from class that are command parameters
+    def __get_attrs(self):
+        # print(dir(self))
+        orig_attrs = dir(self)
+        # attrs = list(filter(self.__filter_atts, dir(self)))
+        attrs = [a for a in dir(self) if self.__filter_atts(a)]
+        return attrs
+
     # Returns the prefix.
-    def _prefix(self):
+    def __prefix(self):
         return self.cmd_prefix
 
     # Returns the user running the command and the command base (`wp`).
-    def _wp_cmd(self):
+    def __wp_cmd(self):
         if self.as_sudo:
-            return self._as_sudo + [
+            return self.__as_sudo + [
                 self.cmd_base
             ]
         return [
             self.cmd_base
         ]
 
-    # Returns the WP CLI command.
-    def _cmd(self):
-        return [
-            self.command
-        ]
-
-    # def _global_params(self):
-    #     return self._get_params_by_attrs(self._get_global_attrs(), [])
-
-    # def _get_params_by_attrs(self, attrs, p):
-    #     # p = self.params()
-    #     for attr in attrs:
-    #         key = attr
-    #         val = self[attr]
-    #
-    #         # Replace underscores with dashes except for those which are RAW.
-    #         if attr not in self.get_raw_params():
-    #             key = key.replace('_', '-')
-    #
-    #         # Prepare output
-    #         t = type(self[attr])
-    #         if bool == t:
-    #             false_attrs = self._get_false_attrs()
-    #             if key in false_attrs:
-    #                 p.append(false_attrs[key])
-    #             elif self[attr]:
-    #                 p.append(f"--{key}")
-    #         elif list == t:
-    #             if 0 != len(val):
-    #                 val_str = ",".join(val)
-    #                 p.append(f"--{key}=\"{val_str}\"")
-    #         elif str == t:
-    #             if '' != val:
-    #                 p.append(f"--{key}=\"{val}\"")
-    #         else:
-    #             p.append(f"--{key}=\"{val}\"")
-    #
-    #     # Prepare sudo.
-    #     if self.as_sudo:
-    #         p += self._as_sudo_param
-    #
-    #     return p
-
     # Returns the parameters.
-    def _params(self):
+    def __params(self):
         # return self._get_params_by_attrs(self._get_attrs(), self.params())
         p = self.params()
-        for attr in self._get_attrs():
+        attrs = self.__get_attrs()
+        for attr in attrs:
             key = attr
             val = self[attr]
-            if attr not in self.get_raw_params():
+            if attr not in self.__get_raw_params():
                 key = key.replace('_', '-')
+
+            custom_out_attr = self.__get_attr_custom_param_output(attr)
+            if '' != custom_out_attr:
+                p.append(custom_out_attr)
+                continue
 
             t = type(self[attr])
             if bool == t:
-                p.append(f"--{key}")
+                custom_bool_attrs = self.__get_custom_bool_attrs()
+                if f"{attr}-{str(val).lower()}" in custom_bool_attrs.keys():
+                    p.append(custom_bool_attrs[f"{attr}-{str(val).lower()}"])
+                elif self[attr]:
+                    p.append(f"--{key}")
             elif list == t:
                 if 0 != len(val):
                     val_str = ",".join(val)
                     p.append(f"--{key}=\"{val_str}\"")
             elif str == t:
                 if '' != val:
+                    # p.append(f"--{key}={val}")
                     p.append(f"--{key}=\"{val}\"")
             else:
                 p.append(f"--{key}=\"{val}\"")
 
-        if self.as_sudo:
-            p += self._as_sudo_param
+        if self.as_sudo and 'root' == self.cmd_user:
+            p += self.__as_sudo_param
 
         return p
 
-    # Gets all attributes from class that are command parameters
-    def _get_attrs(self):
-        # print(dir(self))
-        return [a for a in dir(self)
-                if not a.startswith('__') and not callable(getattr(self, a)) and a not in self._get_excluded_attrs()]
-
-    # Gets global attributes
-    # @classmethod
-    # def _get_global_attrs(cls):
-    #     return [
-    #         "path",
-    #         "url",
-    #         "ssh",
-    #         "http",
-    #         "user",
-    #         "skip_plugins",
-    #         "skip_themes",
-    #         "skip_packages",
-    #         "require",
-    #         "exec",
-    #         "color",
-    #         "debug",
-    #         "prompt", # Not implemented
-    #         "quiet", # Not implemented
-    #     ]
-
-    # Gets the false attrs.
-    def _get_false_attrs(self):
-        return {
-            "color": "--no-color",
-            "debug": "--debug=false",
-        }
-
-    # Gets excluded attributes.
-    def _get_excluded_attrs(self):
-        return [
-                   'command',
-                   "prompt",
-                   "quiet",
-               ] + self.get_excluded_attrs()
-        # return ['command'] + self.get_excluded_attrs() + WPCommand._get_global_attrs()
-
-    def _suffix(self):
+    def __suffix(self):
         return self.cmd_suffix
