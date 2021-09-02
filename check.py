@@ -136,7 +136,7 @@ def get_image_paths_by_table(out):
 
 # Process images, starting with the database.
 def process_db_images():
-    purge_cache = False
+    db_images_processed, db_images_not_processed, db_images_converted = [], [], []
 
     # Find all the images.
     s = wp.DBSearch(
@@ -153,9 +153,13 @@ def process_db_images():
 
     # Process the images
     table_images = get_image_paths_by_table(out)
+
     # for table in table_images:
     for key, table in table_images.items():
         images_processed, images_not_processed, images_converted = process_images(table["images"])
+        db_images_processed += images_processed
+        db_images_not_processed += images_not_processed
+        db_images_converted += images_converted
         for o_file in images_converted:
             sr = wp.SearchReplace(
                 o_file.replace(get_path(), ""),
@@ -169,7 +173,7 @@ def process_db_images():
             print(out)
             # print(err)
 
-    return purge_cache
+    return db_images_processed, db_images_not_processed, db_images_converted
 
 
 def get_image_exts():
@@ -262,4 +266,4 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         app_path = sys.argv[1]
     prepare()
-    # run()
+    run()
