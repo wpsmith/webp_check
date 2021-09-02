@@ -11,7 +11,7 @@ class PostGet(WPCommand):
     field = ''
 
     # Limit the output to specific fields. Defaults to all fields.
-    fields = []
+    fields = ''
 
     # Render output in a particular format.
     # default: table
@@ -35,3 +35,10 @@ class PostGet(WPCommand):
         return [
             "id"
         ]
+
+    # Gets the custom string attrs.
+    def get_attr_custom_param_output(self, attr):
+        if 'fields' == attr and hasattr(self, 'fields') and '' != self.fields:
+            return '--fields=' + self.fields
+
+        return ''
