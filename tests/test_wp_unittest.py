@@ -6,7 +6,7 @@ import sqlparse as sqlparse
 import config
 import os
 from wp import WPCLIConfig, SearchReplace, PostGet, DBItems, DBSearch, DBQuery, DBItem, DBColumns, DBExport, DBImport, \
-    DBCheck, DBTables
+    DBCheck, DBTables, Eval
 
 
 class TestWPConfig(unittest.TestCase):
@@ -163,7 +163,13 @@ class TestWPConfig(unittest.TestCase):
 
         # search for images
 
-
+    def test_exec(self):
+        e = Eval("echo 'test'; throw Exception('error');")
+        out, err = e.run()
+        print("OUT")
+        print(out)
+        print("---ERR---")
+        print(err)
 
     def test_search_replace_yaml(self):
         sr = SearchReplace("paideiasoutheast.test", "paideiasoutheast.com",
