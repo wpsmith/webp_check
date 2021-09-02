@@ -93,7 +93,8 @@ class PostUpdate(WPCommand):
 
     # [--guid=<guid>]
     # Global Unique ID for referencing the post. Default empty.
-    guid = ''
+    # GUID cannot be updated, so why even support it?
+    # guid = ''
 
     # [--post_category=<post_category>]
     # Array of category names, slugs, or IDs. Defaults to value of the ‘default_category’ option.
@@ -150,6 +151,7 @@ class PostUpdate(WPCommand):
         self.post_parent = self.get_arg_value(key="post_parent", default_value=self.post_parent)
         self.menu_order = self.get_arg_value(key="menu_order", default_value=self.menu_order)
         self.post_mime_type = self.get_arg_value(key="post_mime_type", default_value=self.post_mime_type)
+        # self.guid = self.get_arg_value(key="guid", default_value=self.guid)
         self.post_category = self.get_arg_value(key="post_category", default_value=self.post_category)
         self.tags_input = self.get_arg_value(key="tags_input", default_value=self.tags_input)
         self.tax_input = self.get_arg_value(key="tax_input", default_value=self.tax_input)
