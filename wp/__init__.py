@@ -4,6 +4,9 @@ from wp.config import WPCLIConfig
 # search-replace
 from wp.search_replace import SearchReplace
 
+# eval
+from wp.eval import Eval
+
 # db
 from wp.db_prefix import DBPrefix
 from wp.db_query import DBQuery
