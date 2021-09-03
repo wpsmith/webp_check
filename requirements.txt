@@ -2,3 +2,4 @@ requests
 pillow
 python-dotenv
 PyYAML
+python-crontab
