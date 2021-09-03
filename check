@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# Get Python.
+PYTHON_REF=$(source ./check_python.sh)
+if [[ "$PYTHON_REF" == "NoPython" ]]; then
+    echo "Python3.6+ is not installed."
+    exit
+fi
+
+$PYTHON_REF ./check.py
