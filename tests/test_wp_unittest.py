@@ -2,7 +2,6 @@ import json
 import unittest
 from subprocess import CalledProcessError
 
-import sqlparse as sqlparse
 import config
 import os
 from wp import WPCLIConfig, SearchReplace, PostGet, DBItems, DBSearch, DBQuery, DBItem, DBColumns, DBExport, DBImport, \
@@ -11,8 +10,8 @@ from wp import WPCLIConfig, SearchReplace, PostGet, DBItems, DBSearch, DBQuery, 
 
 class TestWPConfig(unittest.TestCase):
     def test_init(self):
-        url = 'paideiasoutheast.test'
-        wp_cli_cfg = WPCLIConfig(url=url, user='wpsmith')
+        url = 'example.test'
+        wp_cli_cfg = WPCLIConfig(url=url, user='admin')
         self.assertEqual(wp_cli_cfg.url, url, f"Should be {url}")
 
     def test_yml(self):
@@ -89,7 +88,7 @@ class TestWPConfig(unittest.TestCase):
             'wp_posts',
             'post_content',
             3049,
-            'ock-image size-large"><img src="https://paideiasoutheast.test/wp-content/uploads/2021/08/enriching-nature-journal-watercolor-1024x684.jpg" alt="enriching mama\'s soul with nature'
+            'ock-image size-large"><img src="https://example.test/wp-content/uploads/2021/08/enriching-nature-journal-watercolor-1024x684.jpg" alt="enriching mama\'s soul with nature'
         ])
         db_query = DBQuery(
             f"SELECT * from {i.table} WHERE {i.column} LIKE \"%{i.value}%\""
@@ -99,7 +98,7 @@ class TestWPConfig(unittest.TestCase):
         print(db_query_out)
 
     def test_db_query_unknown_table(self):
-        i = DBItem(['wp_yoast_seo_links', 'url', 950, 'https://paideiasoutheast.test/wp-content/uploads/2021/03/TwigyPosts-321-1024x684.jpg'])
+        i = DBItem(['wp_yoast_seo_links', 'url', 950, 'https://example.test/wp-content/uploads/2021/03/TwigyPosts-321-1024x684.jpg'])
         db_query = DBQuery(
             f"SELECT * from {i.table} WHERE {i.column} LIKE \"%{i.value}%\""
                               # skip_column_names=True
@@ -125,8 +124,8 @@ class TestWPConfig(unittest.TestCase):
 
     def test_db_search(self):
         s = DBSearch(
-            # 'paideiasoutheast\.test\/.+(jpg|jpeg|png|gif)',
-            'paideiasoutheast\.test[-a-zA-Z0-9()@:%_\+.~#?&\/=]+?([\w\d_-]+)\.(jpg|jpeg|png|gif)',
+            # 'example\.test\/.+(jpg|jpeg|png|gif)',
+            'example\.test[-a-zA-Z0-9()@:%_\+.~#?&\/=]+?([\w\d_-]+)\.(jpg|jpeg|png|gif)',
             regex=True,
             all_tables=True,
             table_column_once=True,
@@ -172,7 +171,7 @@ class TestWPConfig(unittest.TestCase):
         print(err)
 
     def test_search_replace_yaml(self):
-        sr = SearchReplace("paideiasoutheast.test", "paideiasoutheast.com",
+        sr = SearchReplace("example.test", "example.com",
                               table="wp_post*",
                               debug=True,
                               dry_run=True,
@@ -187,7 +186,7 @@ class TestWPConfig(unittest.TestCase):
                               table="wp_post*",
                               dry_run=True,
                               all_tables_with_prefix=True,
-                              path="/Users/travis.smith/Projects/WPS/paideiasoutheast.test",
+                              path="/Users/travis.smith/Projects/WPS/example.test",
                               url="domain.com")
         self.assertEqual(['search-replace'],
             sr._cmd(),
@@ -199,7 +198,7 @@ class TestWPConfig(unittest.TestCase):
             "\"wp_post*\"",
             '--all-tables-with-prefix',
             '--dry-run',
-            '--path="/Users/travis.smith/Projects/WPS/paideiasoutheast.test"',
+            '--path="/Users/travis.smith/Projects/WPS/example.test"',
             '--url="domain.com"'
         ]
         self.assertEqual(
@@ -215,7 +214,7 @@ class TestWPConfig(unittest.TestCase):
             "\"wp_post*\"",
             '--all-tables-with-prefix',
             '--dry-run',
-            '--path="/Users/travis.smith/Projects/WPS/paideiasoutheast.test"',
+            '--path="/Users/travis.smith/Projects/WPS/example.test"',
             '--url="domain.com"'
         ]
         self.assertEqual(
