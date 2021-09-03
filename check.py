@@ -119,17 +119,19 @@ def purge_cache():
     Purges the WP and Cloudflare cache.
     :return: bool whether cache was cleared or not.
     """
-    was_flushed = True
-    out, err = wp.CacheFlush(
-        as_sudo=(os.geteuid() == 0),
-    ).run()
-    if "Success: The cache was flushed." != out.strip():
-        was_flushed = False
+    was_flushed = False
+
+    if config.get().get("FLUSH_DATABASE"):
+        out, err = wp.CacheFlush(
+            as_sudo=(os.geteuid() == 0),
+        ).run()
+        if "Success: The cache was flushed." != out.strip():
+            was_flushed = True
 
     if config.get().get("CF_PURGE_CACHE"):
         is_flushed = cloudflare.purge(config.get().get("CF_ZONE_ID"))
-        if not is_flushed:
-            was_flushed = False
+        if is_flushed:
+            was_flushed = True
 
     return was_flushed
 
@@ -416,7 +418,6 @@ def run():
     Runs everything.
     :return: void
     """
-    # all_images_processed, all_images_not_processed, all_images_converted = [], [], []
     fs_images_processed, fs_images_not_processed, fs_images_converted = process_dir(get_path())
     print_summary("filesystem images processed", fs_images_processed)
     print_summary("filesystem images converted", fs_images_converted)
