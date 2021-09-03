@@ -1,8 +1,10 @@
 from wp.config import WPCLIConfig
-# from wp.wp import WP, wp
 
 # search-replace
 from wp.search_replace import SearchReplace
+
+# cache
+from wp.cache_flush import CacheFlush
 
 # eval
 from wp.eval import Eval
@@ -27,5 +29,3 @@ from wp.option_add import OptionAdd
 from wp.option_get import OptionGet
 from wp.option_update import OptionUpdate
 
-# cache
-from wp.cache_flush import CacheFlush
