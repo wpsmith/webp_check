@@ -11,4 +11,5 @@ def install_cron():
     cron.write()
 
 
-install_cron()
+if __name__ == "__main__":
+    install_cron()
