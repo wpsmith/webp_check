@@ -2,6 +2,7 @@ import os
 
 from crontab import CronTab
 
+
 # Installs the cron job.
 def install_cron():
     cron = CronTab(tabfile='/etc/crontab', user=False)
