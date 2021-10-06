@@ -1,10 +1,12 @@
-# webp Checker
+# WP Convert Images to WebP
 
 This replaces png, jpg, jpeg, and gif images with a webp image in the WordPress database.
 
+Written by Travis Smith (@wpsmith)
+
 ## Summary
 
-webp Checker does the following:
+The program does the following:
 
 * Creates a WordPress database backup placing it at `BACKUPS_PATH`, defaulting to `/var/www/backups`
 * Searches the WordPress database for any and all png, jpg, jpeg, and gif images, creates a webp image replacement, and
